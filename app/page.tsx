@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { Route } from "next";
 import { Button } from "@/components/ui/button";
 
 export default function Home() {
@@ -14,7 +15,7 @@ export default function Home() {
             models including GPT-4, Claude, and Gemini.
           </p>
         </div>
-        <Link href="/playground">
+        <Link href={"/playground" as Route}>
           <Button size="lg" className="text-base">
             Open Playground
           </Button>
