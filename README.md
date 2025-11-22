@@ -1,6 +1,6 @@
 # GenAI Playground
 
-An interactive AI playground application that allows users to select from multiple large language models and interact with them through a modern chat interface. Built with Next.js 14, TypeScript, and shadcn/ui components.
+An interactive AI playground application that allows users to select from multiple large language models and interact with them through a modern chat interface. Built with Next.js 16, TypeScript, and shadcn/ui components.
 
 ## Features
 
@@ -14,7 +14,7 @@ An interactive AI playground application that allows users to select from multip
 
 ## Tech Stack
 
-- **Framework**: Next.js 14 (App Router)
+- **Framework**: Next.js 16 (App Router)
 - **Language**: TypeScript
 - **Styling**: Tailwind CSS
 - **UI Components**: shadcn/ui
