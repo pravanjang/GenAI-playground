@@ -4,7 +4,7 @@ import { PlaygroundHeader } from "@/components/playground/playground-header"
 import { PlaygroundSidebar } from "@/components/playground/playground-sidebar"
 import { PlaygroundTextarea } from "@/components/playground/playground-textarea"
 
-export default function PlaygroundPage() {
+export default function Playground() {
   return (
     <div className="flex h-screen flex-col dark">
       <PlaygroundHeader />
