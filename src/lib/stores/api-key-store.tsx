@@ -9,6 +9,7 @@ import {
   ModelInfo,
   ProviderID,
 } from "@/lib/types"
+import { getConnector } from "@/lib/connectors"
 
 const API_KEY_STORAGE_KEY = "genai-playground-api-keys"
 
@@ -68,7 +69,7 @@ function deobfuscate(text: string): string {
 // Load saved API keys from localStorage
 function loadSavedConfig(): APIKeyConfig {
   if (typeof window === "undefined") return DEFAULT_API_CONFIG
-  
+
   try {
     const saved = localStorage.getItem(API_KEY_STORAGE_KEY)
     if (saved) {
@@ -124,13 +125,13 @@ export function APIKeyProvider({ children }: { children: React.ReactNode }) {
       providers: prev.providers.map((p) =>
         p.id === providerId
           ? {
-              ...p,
-              apiKey: trimmedKey,
-              configured: !!trimmedKey,
-              status: trimmedKey ? (isValid ? "untested" : "invalid") : "untested",
-              errorMessage: !isValid && trimmedKey ? "Invalid key format" : undefined,
-              availableModels: [],
-            }
+            ...p,
+            apiKey: trimmedKey,
+            configured: !!trimmedKey,
+            status: trimmedKey ? (isValid ? "untested" : "invalid") : "untested",
+            errorMessage: !isValid && trimmedKey ? "Invalid key format" : undefined,
+            availableModels: [],
+          }
           : p
       ),
     }))
@@ -142,13 +143,13 @@ export function APIKeyProvider({ children }: { children: React.ReactNode }) {
       providers: prev.providers.map((p) =>
         p.id === providerId
           ? {
-              ...p,
-              apiKey: undefined,
-              configured: false,
-              status: "untested",
-              errorMessage: undefined,
-              availableModels: [],
-            }
+            ...p,
+            apiKey: undefined,
+            configured: false,
+            status: "untested",
+            errorMessage: undefined,
+            availableModels: [],
+          }
           : p
       ),
     }))
@@ -169,26 +170,28 @@ export function APIKeyProvider({ children }: { children: React.ReactNode }) {
     }))
 
     try {
-      // For now, we simulate a connection test
-      // In production, this would make an actual API call to validate the key
-      await new Promise((resolve) => setTimeout(resolve, 500))
+      const connector = getConnector(providerId)
+      const isValid = await connector.validateKey(provider.apiKey)
+
+      if (!isValid) {
+        throw new Error("Invalid API key")
+      }
 
       // Get available models for this provider
-      const providerModels = MODELS.filter((m) => m.provider === providerId).map(
-        (m) => m.id
-      )
+      const models = await connector.getModels(provider.apiKey)
+      const modelIds = models.map((m) => m.id)
 
       setConfig((prev) => ({
         ...prev,
         providers: prev.providers.map((p) =>
           p.id === providerId
             ? {
-                ...p,
-                status: "valid",
-                availableModels: providerModels,
-                lastTested: Date.now(),
-                errorMessage: undefined,
-              }
+              ...p,
+              status: "valid",
+              availableModels: modelIds,
+              lastTested: Date.now(),
+              errorMessage: undefined,
+            }
             : p
         ),
       }))
@@ -202,11 +205,11 @@ export function APIKeyProvider({ children }: { children: React.ReactNode }) {
         providers: prev.providers.map((p) =>
           p.id === providerId
             ? {
-                ...p,
-                status: "error",
-                errorMessage: message,
-                availableModels: [],
-              }
+              ...p,
+              status: "error",
+              errorMessage: message,
+              availableModels: [],
+            }
             : p
         ),
       }))
