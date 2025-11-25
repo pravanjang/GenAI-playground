@@ -91,16 +91,22 @@ function loadSavedConfig(): APIKeyConfig {
 }
 
 export function APIKeyProvider({ children }: { children: React.ReactNode }) {
-  const [config, setConfig] = useState<APIKeyConfig>(() => {
-    // Initialize with saved config on client side
-    if (typeof window !== "undefined") {
-      return loadSavedConfig()
+  const [config, setConfig] = useState<APIKeyConfig>(DEFAULT_API_CONFIG)
+  const [isInitialized, setIsInitialized] = useState(false)
+
+  // Load saved config on mount
+  useEffect(() => {
+    const saved = loadSavedConfig()
+    if (saved) {
+      setConfig(saved)
     }
-    return DEFAULT_API_CONFIG
-  })
+    setIsInitialized(true)
+  }, [])
 
   // Save API keys to localStorage when config changes
   useEffect(() => {
+    if (!isInitialized) return
+
     try {
       // Obfuscate keys before storing
       const toSave = {
@@ -114,7 +120,7 @@ export function APIKeyProvider({ children }: { children: React.ReactNode }) {
     } catch (error) {
       console.error("Failed to save API keys:", error)
     }
-  }, [config])
+  }, [config, isInitialized])
 
   const setAPIKey = useCallback((providerId: ProviderID, apiKey: string) => {
     const trimmedKey = apiKey.trim()
