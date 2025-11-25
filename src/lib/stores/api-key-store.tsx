@@ -1,0 +1,270 @@
+"use client"
+
+import React, { createContext, useContext, useEffect, useState, useCallback } from "react"
+import {
+  APIKeyConfig,
+  APIProvider,
+  DEFAULT_API_CONFIG,
+  MODELS,
+  ModelInfo,
+  ProviderID,
+} from "@/lib/types"
+
+const API_KEY_STORAGE_KEY = "genai-playground-api-keys"
+
+interface APIKeyContextType {
+  config: APIKeyConfig
+  setAPIKey: (providerId: ProviderID, apiKey: string) => void
+  removeAPIKey: (providerId: ProviderID) => void
+  testConnection: (providerId: ProviderID) => Promise<boolean>
+  testAllConnections: () => Promise<void>
+  getAvailableModels: () => ModelInfo[]
+  getProviderStatus: (providerId: ProviderID) => APIProvider | undefined
+  isAnyKeyConfigured: () => boolean
+  clearAllKeys: () => void
+}
+
+const APIKeyContext = createContext<APIKeyContextType | undefined>(undefined)
+
+// Masks an API key for display (shows first 7 and last 4 characters)
+export function maskAPIKey(key: string): string {
+  if (key.length <= 11) return "••••••••"
+  return `${key.slice(0, 7)}••••${key.slice(-4)}`
+}
+
+// Validates API key format based on provider
+export function validateKeyFormat(
+  providerId: ProviderID,
+  key: string
+): boolean {
+  const trimmedKey = key.trim()
+  if (!trimmedKey) return false
+
+  switch (providerId) {
+    case "openai":
+      return trimmedKey.startsWith("sk-") && trimmedKey.length >= 20
+    case "anthropic":
+      return trimmedKey.startsWith("sk-ant-") && trimmedKey.length >= 20
+    case "google":
+      return trimmedKey.startsWith("AIza") && trimmedKey.length >= 20
+    default:
+      return trimmedKey.length >= 20
+  }
+}
+
+// Simple obfuscation for localStorage (not truly secure, but better than plaintext)
+function obfuscate(text: string): string {
+  return btoa(text)
+}
+
+function deobfuscate(text: string): string {
+  try {
+    return atob(text)
+  } catch {
+    return ""
+  }
+}
+
+// Load saved API keys from localStorage
+function loadSavedConfig(): APIKeyConfig {
+  if (typeof window === "undefined") return DEFAULT_API_CONFIG
+  
+  try {
+    const saved = localStorage.getItem(API_KEY_STORAGE_KEY)
+    if (saved) {
+      const parsed = JSON.parse(saved)
+      // Deobfuscate stored keys
+      const providers = parsed.providers.map((p: APIProvider) => ({
+        ...p,
+        apiKey: p.apiKey ? deobfuscate(p.apiKey) : undefined,
+      }))
+      return {
+        ...parsed,
+        providers,
+      }
+    }
+  } catch (error) {
+    console.error("Failed to load API keys:", error)
+  }
+  return DEFAULT_API_CONFIG
+}
+
+export function APIKeyProvider({ children }: { children: React.ReactNode }) {
+  const [config, setConfig] = useState<APIKeyConfig>(() => {
+    // Initialize with saved config on client side
+    if (typeof window !== "undefined") {
+      return loadSavedConfig()
+    }
+    return DEFAULT_API_CONFIG
+  })
+
+  // Save API keys to localStorage when config changes
+  useEffect(() => {
+    try {
+      // Obfuscate keys before storing
+      const toSave = {
+        ...config,
+        providers: config.providers.map((p) => ({
+          ...p,
+          apiKey: p.apiKey ? obfuscate(p.apiKey) : undefined,
+        })),
+      }
+      localStorage.setItem(API_KEY_STORAGE_KEY, JSON.stringify(toSave))
+    } catch (error) {
+      console.error("Failed to save API keys:", error)
+    }
+  }, [config])
+
+  const setAPIKey = useCallback((providerId: ProviderID, apiKey: string) => {
+    const trimmedKey = apiKey.trim()
+    const isValid = validateKeyFormat(providerId, trimmedKey)
+
+    setConfig((prev) => ({
+      ...prev,
+      providers: prev.providers.map((p) =>
+        p.id === providerId
+          ? {
+              ...p,
+              apiKey: trimmedKey,
+              configured: !!trimmedKey,
+              status: trimmedKey ? (isValid ? "untested" : "invalid") : "untested",
+              errorMessage: !isValid && trimmedKey ? "Invalid key format" : undefined,
+              availableModels: [],
+            }
+          : p
+      ),
+    }))
+  }, [])
+
+  const removeAPIKey = useCallback((providerId: ProviderID) => {
+    setConfig((prev) => ({
+      ...prev,
+      providers: prev.providers.map((p) =>
+        p.id === providerId
+          ? {
+              ...p,
+              apiKey: undefined,
+              configured: false,
+              status: "untested",
+              errorMessage: undefined,
+              availableModels: [],
+            }
+          : p
+      ),
+    }))
+  }, [])
+
+  const testConnection = useCallback(async (providerId: ProviderID): Promise<boolean> => {
+    const provider = config.providers.find((p) => p.id === providerId)
+    if (!provider?.apiKey) return false
+
+    // Set testing status
+    setConfig((prev) => ({
+      ...prev,
+      providers: prev.providers.map((p) =>
+        p.id === providerId
+          ? { ...p, status: "untested", errorMessage: undefined }
+          : p
+      ),
+    }))
+
+    try {
+      // For now, we simulate a connection test
+      // In production, this would make an actual API call to validate the key
+      await new Promise((resolve) => setTimeout(resolve, 500))
+
+      // Get available models for this provider
+      const providerModels = MODELS.filter((m) => m.provider === providerId).map(
+        (m) => m.id
+      )
+
+      setConfig((prev) => ({
+        ...prev,
+        providers: prev.providers.map((p) =>
+          p.id === providerId
+            ? {
+                ...p,
+                status: "valid",
+                availableModels: providerModels,
+                lastTested: Date.now(),
+                errorMessage: undefined,
+              }
+            : p
+        ),
+      }))
+
+      return true
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Connection failed"
+      setConfig((prev) => ({
+        ...prev,
+        providers: prev.providers.map((p) =>
+          p.id === providerId
+            ? {
+                ...p,
+                status: "error",
+                errorMessage: message,
+                availableModels: [],
+              }
+            : p
+        ),
+      }))
+      return false
+    }
+  }, [config.providers])
+
+  const testAllConnections = useCallback(async () => {
+    const configuredProviders = config.providers.filter((p) => p.configured)
+    await Promise.all(configuredProviders.map((p) => testConnection(p.id)))
+  }, [config.providers, testConnection])
+
+  const getAvailableModels = useCallback((): ModelInfo[] => {
+    const validProviders = config.providers
+      .filter((p) => p.status === "valid")
+      .map((p) => p.id)
+
+    return MODELS.map((model) => ({
+      ...model,
+      available: validProviders.includes(model.provider),
+    }))
+  }, [config.providers])
+
+  const getProviderStatus = useCallback((providerId: ProviderID) => {
+    return config.providers.find((p) => p.id === providerId)
+  }, [config.providers])
+
+  const isAnyKeyConfigured = useCallback(() => {
+    return config.providers.some((p) => p.configured)
+  }, [config.providers])
+
+  const clearAllKeys = useCallback(() => {
+    setConfig(DEFAULT_API_CONFIG)
+  }, [])
+
+  return (
+    <APIKeyContext.Provider
+      value={{
+        config,
+        setAPIKey,
+        removeAPIKey,
+        testConnection,
+        testAllConnections,
+        getAvailableModels,
+        getProviderStatus,
+        isAnyKeyConfigured,
+        clearAllKeys,
+      }}
+    >
+      {children}
+    </APIKeyContext.Provider>
+  )
+}
+
+export function useAPIKeys() {
+  const context = useContext(APIKeyContext)
+  if (context === undefined) {
+    throw new Error("useAPIKeys must be used within an APIKeyProvider")
+  }
+  return context
+}
