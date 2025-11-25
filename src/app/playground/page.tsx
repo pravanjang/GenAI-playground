@@ -6,7 +6,7 @@ import { PlaygroundTextarea } from "@/components/playground/playground-textarea"
 
 export default function Playground() {
   return (
-    <div className="flex h-screen flex-col dark">
+    <div className="flex h-screen flex-col">
       <PlaygroundHeader />
       <div className="flex flex-1 overflow-hidden">
         <PlaygroundTextarea />

@@ -5,13 +5,19 @@ import { Label } from "@/components/ui/label"
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
+  SelectSeparator,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
 import { Slider } from "@/components/ui/slider"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
+import { useAPIKeys } from "@/lib/stores/api-key-store"
+import { PROVIDERS, ProviderID, MODELS } from "@/lib/types"
+import { Settings, AlertTriangle } from "lucide-react"
 
 type Mode = "complete" | "insert" | "edit"
 
@@ -23,21 +29,51 @@ interface PlaygroundSidebarProps {
     maxLength: number
     topP: number
   }) => void
+  onOpenSettings?: () => void
 }
 
 export function PlaygroundSidebar({
   onModelChange,
   onModeChange,
   onParametersChange,
+  onOpenSettings,
 }: PlaygroundSidebarProps) {
   const [mode, setMode] = useState<Mode>("complete")
   const [temperature, setTemperature] = useState([0.7])
   const [maxLength, setMaxLength] = useState([256])
   const [topP, setTopP] = useState([0.9])
+  const [selectedModel, setSelectedModel] = useState<string>("")
+
+  const { getAvailableModels, config } = useAPIKeys()
+
+  const availableModels = getAvailableModels()
+  const hasValidKey = availableModels.some((m) => m.available)
+
+  // Group models by provider
+  const modelsByProvider = (Object.keys(PROVIDERS) as ProviderID[]).map(
+    (providerId) => {
+      const provider = config.providers.find((p) => p.id === providerId)
+      const providerModels = MODELS.filter((m) => m.provider === providerId)
+      const isConfigured = provider?.status === "valid"
+
+      return {
+        providerId,
+        providerName: PROVIDERS[providerId].name,
+        models: providerModels,
+        isConfigured,
+        status: provider?.status,
+      }
+    }
+  )
 
   const handleModeChange = (newMode: Mode) => {
     setMode(newMode)
     onModeChange?.(newMode)
+  }
+
+  const handleModelChange = (model: string) => {
+    setSelectedModel(model)
+    onModelChange?.(model)
   }
 
   const handleTemperatureChange = (value: number[]) => {
@@ -72,19 +108,69 @@ export function PlaygroundSidebar({
       <div className="space-y-6">
         <div className="space-y-3">
           <Label>Model</Label>
-          <Select defaultValue="gpt-4" onValueChange={onModelChange}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="gpt-4">GPT-4</SelectItem>
-              <SelectItem value="gpt-3.5-turbo">GPT-3.5 Turbo</SelectItem>
-              <SelectItem value="claude-3-opus">Claude 3 Opus</SelectItem>
-              <SelectItem value="claude-3-sonnet">Claude 3 Sonnet</SelectItem>
-              <SelectItem value="gemini-pro">Gemini Pro</SelectItem>
-              <SelectItem value="gemini-1.5-pro">Gemini 1.5 Pro</SelectItem>
-            </SelectContent>
-          </Select>
+          {!hasValidKey ? (
+            <div className="rounded-lg border border-yellow-500/20 bg-yellow-500/10 p-3">
+              <div className="flex items-start gap-2">
+                <AlertTriangle className="h-4 w-4 text-yellow-500 mt-0.5" />
+                <div className="space-y-1">
+                  <p className="text-sm text-yellow-500 dark:text-yellow-400">
+                    Configure API keys to get started
+                  </p>
+                  <Button
+                    variant="link"
+                    size="sm"
+                    className="h-auto p-0 text-yellow-500 dark:text-yellow-400"
+                    onClick={onOpenSettings}
+                  >
+                    <Settings className="h-3 w-3 mr-1" />
+                    Open Settings
+                  </Button>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <Select
+              value={selectedModel}
+              onValueChange={handleModelChange}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select a model..." />
+              </SelectTrigger>
+              <SelectContent>
+                {modelsByProvider.map((group, index) => (
+                  <SelectGroup key={group.providerId}>
+                    {index > 0 && <SelectSeparator />}
+                    <SelectLabel className="flex items-center gap-2">
+                      {group.providerName}
+                      {group.isConfigured ? (
+                        <span className="text-xs text-green-500">
+                          ({group.models.length} models)
+                        </span>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">
+                          (not configured)
+                        </span>
+                      )}
+                    </SelectLabel>
+                    {group.models.map((model) => (
+                      <SelectItem
+                        key={model.id}
+                        value={model.id}
+                        disabled={!group.isConfigured}
+                      >
+                        <div className="flex flex-col">
+                          <span>{model.name}</span>
+                          <span className="text-xs text-muted-foreground">
+                            {model.description}
+                          </span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
         </div>
 
         <Separator />
