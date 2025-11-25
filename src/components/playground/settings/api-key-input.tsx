@@ -41,7 +41,8 @@ export function APIKeyInput({ providerId }: APIKeyInputProps) {
     removeAPIKey(providerId)
   }
 
-  const displayValue = (): string => {
+  // Compute the display value for the input field
+  const getInputValue = (): string => {
     if (showKey) {
       return inputValue || provider.apiKey || ""
     }
@@ -115,7 +116,7 @@ export function APIKeyInput({ providerId }: APIKeyInputProps) {
             id={`api-key-${providerId}`}
             type={showKey ? "text" : "password"}
             placeholder={providerInfo.keyPlaceholder}
-            value={showKey ? inputValue || provider.apiKey || "" : displayValue()}
+            value={getInputValue()}
             onChange={handleInputChange}
             className={
               provider.configured && !isValidFormat

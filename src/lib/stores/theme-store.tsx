@@ -1,6 +1,6 @@
 "use client"
 
-import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from "react"
+import React, { createContext, useContext, useEffect, useState, useCallback } from "react"
 
 type Theme = "light" | "dark"
 
@@ -30,27 +30,16 @@ function loadSavedTheme(): Theme {
 }
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>("dark")
-  const isInitialized = useRef(false)
-
-  // Load saved theme from localStorage on mount (client-side only)
-  useEffect(() => {
-    if (!isInitialized.current) {
-      isInitialized.current = true
-      const savedTheme = loadSavedTheme()
-      if (savedTheme !== "dark") {
-        // Use a microtask to avoid the lint warning about setState in effect
-        Promise.resolve().then(() => {
-          setThemeState(savedTheme)
-        })
-      }
+  const [theme, setThemeState] = useState<Theme>(() => {
+    // Initialize with saved theme on client side
+    if (typeof window !== "undefined") {
+      return loadSavedTheme()
     }
-  }, [])
+    return "dark"
+  })
 
   // Apply theme class to document and save to localStorage
   useEffect(() => {
-    if (!isInitialized.current) return
-
     const root = document.documentElement
     root.classList.remove("light", "dark")
     root.classList.add(theme)

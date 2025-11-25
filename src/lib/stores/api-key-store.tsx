@@ -1,6 +1,6 @@
 "use client"
 
-import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from "react"
+import React, { createContext, useContext, useEffect, useState, useCallback } from "react"
 import {
   APIKeyConfig,
   APIProvider,
@@ -90,28 +90,16 @@ function loadSavedConfig(): APIKeyConfig {
 }
 
 export function APIKeyProvider({ children }: { children: React.ReactNode }) {
-  const [config, setConfig] = useState<APIKeyConfig>(DEFAULT_API_CONFIG)
-  const isInitialized = useRef(false)
-
-  // Load saved API keys from localStorage on mount (client-side only)
-  useEffect(() => {
-    if (isInitialized.current) return
-    isInitialized.current = true
-    
-    // Load from localStorage after mount to avoid hydration mismatch
-    const savedConfig = loadSavedConfig()
-    if (JSON.stringify(savedConfig) !== JSON.stringify(DEFAULT_API_CONFIG)) {
-      // Use a microtask to avoid the lint warning about setState in effect
-      queueMicrotask(() => {
-        setConfig(savedConfig)
-      })
+  const [config, setConfig] = useState<APIKeyConfig>(() => {
+    // Initialize with saved config on client side
+    if (typeof window !== "undefined") {
+      return loadSavedConfig()
     }
-  }, [])
+    return DEFAULT_API_CONFIG
+  })
 
   // Save API keys to localStorage when config changes
   useEffect(() => {
-    if (!isInitialized.current) return
-
     try {
       // Obfuscate keys before storing
       const toSave = {
