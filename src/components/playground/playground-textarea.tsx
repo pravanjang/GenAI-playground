@@ -7,12 +7,17 @@ import { Loader2 } from "lucide-react"
 
 interface PlaygroundTextareaProps {
   onSubmit?: (text: string) => Promise<void>
+  response?: string
+  isError?: boolean
 }
 
-export function PlaygroundTextarea({ onSubmit }: PlaygroundTextareaProps) {
+export function PlaygroundTextarea({ onSubmit, response, isError }: PlaygroundTextareaProps) {
   const [input, setInput] = useState("")
-  const [output, setOutput] = useState("")
+  const [internalOutput, setInternalOutput] = useState("")
   const [isLoading, setIsLoading] = useState(false)
+
+  // Use response prop if available, otherwise fallback to internal state
+  const output = response !== undefined ? response : internalOutput
 
   const handleSubmit = async () => {
     if (!input.trim() || isLoading) return
@@ -24,12 +29,12 @@ export function PlaygroundTextarea({ onSubmit }: PlaygroundTextareaProps) {
       } else {
         // Default mock response
         await new Promise((resolve) => setTimeout(resolve, 1000))
-        setOutput(
+        setInternalOutput(
           `Response to: "${input}"\n\nThis is a placeholder response. Connect your AI model to see real responses.`
         )
       }
     } catch (error) {
-      setOutput(`Error: ${error instanceof Error ? error.message : "Unknown error"}`)
+      setInternalOutput(`Error: ${error instanceof Error ? error.message : "Unknown error"}`)
     } finally {
       setIsLoading(false)
     }
@@ -72,10 +77,13 @@ export function PlaygroundTextarea({ onSubmit }: PlaygroundTextareaProps) {
 
       {output && (
         <div className="space-y-2">
-          <div className="text-sm font-medium text-muted-foreground">
-            Response:
+          <div className={`text-sm font-medium ${isError ? "text-red-500" : "text-muted-foreground"}`}>
+            {isError ? "Error:" : "Response:"}
           </div>
-          <div className="rounded-lg border border-border bg-muted/50 p-4">
+          <div className={`rounded-lg border p-4 ${isError
+              ? "border-red-200 bg-red-50 text-red-900 dark:border-red-900/50 dark:bg-red-900/20 dark:text-red-200"
+              : "border-border bg-muted/50"
+            }`}>
             <pre className="whitespace-pre-wrap font-mono text-sm">
               {output}
             </pre>

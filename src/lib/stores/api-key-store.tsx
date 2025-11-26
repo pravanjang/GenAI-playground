@@ -5,10 +5,10 @@ import {
   APIKeyConfig,
   APIProvider,
   DEFAULT_API_CONFIG,
-  MODELS,
   ModelInfo,
   ProviderID,
 } from "@/lib/types"
+import { getConnector } from "@/lib/connectors"
 
 const API_KEY_STORAGE_KEY = "genai-playground-api-keys"
 
@@ -68,7 +68,7 @@ function deobfuscate(text: string): string {
 // Load saved API keys from localStorage
 function loadSavedConfig(): APIKeyConfig {
   if (typeof window === "undefined") return DEFAULT_API_CONFIG
-  
+
   try {
     const saved = localStorage.getItem(API_KEY_STORAGE_KEY)
     if (saved) {
@@ -90,16 +90,22 @@ function loadSavedConfig(): APIKeyConfig {
 }
 
 export function APIKeyProvider({ children }: { children: React.ReactNode }) {
-  const [config, setConfig] = useState<APIKeyConfig>(() => {
-    // Initialize with saved config on client side
-    if (typeof window !== "undefined") {
-      return loadSavedConfig()
+  const [config, setConfig] = useState<APIKeyConfig>(DEFAULT_API_CONFIG)
+  const [isInitialized, setIsInitialized] = useState(false)
+
+  // Load saved config on mount
+  useEffect(() => {
+    const saved = loadSavedConfig()
+    if (saved) {
+      setConfig(saved)
     }
-    return DEFAULT_API_CONFIG
-  })
+    setIsInitialized(true)
+  }, [])
 
   // Save API keys to localStorage when config changes
   useEffect(() => {
+    if (!isInitialized) return
+
     try {
       // Obfuscate keys before storing
       const toSave = {
@@ -113,7 +119,7 @@ export function APIKeyProvider({ children }: { children: React.ReactNode }) {
     } catch (error) {
       console.error("Failed to save API keys:", error)
     }
-  }, [config])
+  }, [config, isInitialized])
 
   const setAPIKey = useCallback((providerId: ProviderID, apiKey: string) => {
     const trimmedKey = apiKey.trim()
@@ -124,13 +130,13 @@ export function APIKeyProvider({ children }: { children: React.ReactNode }) {
       providers: prev.providers.map((p) =>
         p.id === providerId
           ? {
-              ...p,
-              apiKey: trimmedKey,
-              configured: !!trimmedKey,
-              status: trimmedKey ? (isValid ? "untested" : "invalid") : "untested",
-              errorMessage: !isValid && trimmedKey ? "Invalid key format" : undefined,
-              availableModels: [],
-            }
+            ...p,
+            apiKey: trimmedKey,
+            configured: !!trimmedKey,
+            status: trimmedKey ? (isValid ? "untested" : "invalid") : "untested",
+            errorMessage: !isValid && trimmedKey ? "Invalid key format" : undefined,
+            availableModels: [],
+          }
           : p
       ),
     }))
@@ -142,13 +148,13 @@ export function APIKeyProvider({ children }: { children: React.ReactNode }) {
       providers: prev.providers.map((p) =>
         p.id === providerId
           ? {
-              ...p,
-              apiKey: undefined,
-              configured: false,
-              status: "untested",
-              errorMessage: undefined,
-              availableModels: [],
-            }
+            ...p,
+            apiKey: undefined,
+            configured: false,
+            status: "untested",
+            errorMessage: undefined,
+            availableModels: [],
+          }
           : p
       ),
     }))
@@ -169,26 +175,27 @@ export function APIKeyProvider({ children }: { children: React.ReactNode }) {
     }))
 
     try {
-      // For now, we simulate a connection test
-      // In production, this would make an actual API call to validate the key
-      await new Promise((resolve) => setTimeout(resolve, 500))
+      const connector = getConnector(providerId)
+      const isValid = await connector.validateKey(provider.apiKey)
+
+      if (!isValid) {
+        throw new Error("Invalid API key")
+      }
 
       // Get available models for this provider
-      const providerModels = MODELS.filter((m) => m.provider === providerId).map(
-        (m) => m.id
-      )
+      const models = await connector.getModels(provider.apiKey)
 
       setConfig((prev) => ({
         ...prev,
         providers: prev.providers.map((p) =>
           p.id === providerId
             ? {
-                ...p,
-                status: "valid",
-                availableModels: providerModels,
-                lastTested: Date.now(),
-                errorMessage: undefined,
-              }
+              ...p,
+              status: "valid",
+              availableModels: models,
+              lastTested: Date.now(),
+              errorMessage: undefined,
+            }
             : p
         ),
       }))
@@ -202,11 +209,11 @@ export function APIKeyProvider({ children }: { children: React.ReactNode }) {
         providers: prev.providers.map((p) =>
           p.id === providerId
             ? {
-                ...p,
-                status: "error",
-                errorMessage: message,
-                availableModels: [],
-              }
+              ...p,
+              status: "error",
+              errorMessage: message,
+              availableModels: [],
+            }
             : p
         ),
       }))
@@ -220,14 +227,9 @@ export function APIKeyProvider({ children }: { children: React.ReactNode }) {
   }, [config.providers, testConnection])
 
   const getAvailableModels = useCallback((): ModelInfo[] => {
-    const validProviders = config.providers
+    return config.providers
       .filter((p) => p.status === "valid")
-      .map((p) => p.id)
-
-    return MODELS.map((model) => ({
-      ...model,
-      available: validProviders.includes(model.provider),
-    }))
+      .flatMap((p) => p.availableModels)
   }, [config.providers])
 
   const getProviderStatus = useCallback((providerId: ProviderID) => {

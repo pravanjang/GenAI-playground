@@ -9,7 +9,7 @@ export interface APIProvider {
   apiKey?: string
   status: APIKeyStatus
   errorMessage?: string
-  availableModels: string[]
+  availableModels: ModelInfo[]
   lastTested?: number
 }
 
@@ -66,65 +66,7 @@ export interface Conversation {
   updatedAt: number
 }
 
-// Model definitions
-export const MODELS: ModelInfo[] = [
-  {
-    id: "gpt-4",
-    name: "GPT-4",
-    provider: "openai",
-    contextWindow: 8192,
-    description: "Most capable OpenAI model for complex tasks",
-    available: false,
-  },
-  {
-    id: "gpt-4-turbo",
-    name: "GPT-4 Turbo",
-    provider: "openai",
-    contextWindow: 128000,
-    description: "Faster GPT-4 with larger context window",
-    available: false,
-  },
-  {
-    id: "gpt-3.5-turbo",
-    name: "GPT-3.5 Turbo",
-    provider: "openai",
-    contextWindow: 16385,
-    description: "Fast and cost-effective for most tasks",
-    available: false,
-  },
-  {
-    id: "claude-3-opus",
-    name: "Claude 3 Opus",
-    provider: "anthropic",
-    contextWindow: 200000,
-    description: "Most powerful Claude model for complex tasks",
-    available: false,
-  },
-  {
-    id: "claude-3-sonnet",
-    name: "Claude 3 Sonnet",
-    provider: "anthropic",
-    contextWindow: 200000,
-    description: "Balanced performance and speed",
-    available: false,
-  },
-  {
-    id: "gemini-pro",
-    name: "Gemini Pro",
-    provider: "google",
-    contextWindow: 32768,
-    description: "Google's versatile AI model",
-    available: false,
-  },
-  {
-    id: "gemini-1.5-pro",
-    name: "Gemini 1.5 Pro",
-    provider: "google",
-    contextWindow: 1000000,
-    description: "Advanced Gemini with massive context",
-    available: false,
-  },
-]
+
 
 // Provider info
 export const PROVIDERS: Record<
@@ -174,3 +116,5 @@ export const DEFAULT_API_CONFIG: APIKeyConfig = {
   ],
   storageMethod: "localStorage",
 }
+
+export const MAX_DYNAMIC_MODELS = 10
