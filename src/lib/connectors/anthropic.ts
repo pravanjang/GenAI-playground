@@ -113,7 +113,40 @@ export class AnthropicConnector implements GenAIConnector {
             if (!response.body) {
                 throw new Error("No response body from Anthropic")
             }
-            return response.body
+
+            const reader = response.body.getReader()
+            const decoder = new TextDecoder()
+            const encoder = new TextEncoder()
+
+            return new ReadableStream({
+                async start(controller) {
+                    try {
+                        while (true) {
+                            const { done, value } = await reader.read()
+                            if (done) break
+
+                            const chunk = decoder.decode(value)
+                            const lines = chunk.split("\n")
+
+                            for (const line of lines) {
+                                if (line.startsWith("data: ")) {
+                                    try {
+                                        const data = JSON.parse(line.slice(6))
+                                        if (data.type === "content_block_delta" && data.delta?.text) {
+                                            controller.enqueue(encoder.encode(data.delta.text))
+                                        }
+                                    } catch {
+                                        // ignore parse errors
+                                    }
+                                }
+                            }
+                        }
+                        controller.close()
+                    } catch (error) {
+                        controller.error(error)
+                    }
+                },
+            })
         } else {
             const data = await response.json()
             return data.content[0]?.text || ""

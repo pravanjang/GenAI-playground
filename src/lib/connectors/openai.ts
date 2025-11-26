@@ -71,7 +71,6 @@ export class OpenAIConnector implements GenAIConnector {
         apiKey: string,
         stream: boolean = true
     ): Promise<ReadableStream | string> {
-        console.log("OpenAI chat", messages, config)
         const response = await fetch("https://api.openai.com/v1/chat/completions", {
             method: "POST",
             headers: {
@@ -85,7 +84,7 @@ export class OpenAIConnector implements GenAIConnector {
                     content: m.content,
                 })),
                 temperature: config.temperature,
-                max_tokens: config.maxTokens,
+                max_completion_tokens: config.maxTokens,
                 top_p: config.topP,
                 frequency_penalty: config.frequencyPenalty,
                 presence_penalty: config.presencePenalty,
@@ -98,13 +97,45 @@ export class OpenAIConnector implements GenAIConnector {
             throw new Error(error.error?.message || "OpenAI API request failed")
         }
 
-        console.log("OpenAI response", response)
-
         if (stream) {
             if (!response.body) {
                 throw new Error("No response body from OpenAI")
             }
-            return response.body
+
+            const reader = response.body.getReader()
+            const decoder = new TextDecoder()
+            const encoder = new TextEncoder()
+
+            return new ReadableStream({
+                async start(controller) {
+                    try {
+                        while (true) {
+                            const { done, value } = await reader.read()
+                            if (done) break
+
+                            const chunk = decoder.decode(value)
+                            const lines = chunk.split("\n")
+
+                            for (const line of lines) {
+                                if (line.startsWith("data: ") && line !== "data: [DONE]") {
+                                    try {
+                                        const data = JSON.parse(line.slice(6))
+                                        const content = data.choices[0]?.delta?.content
+                                        if (content) {
+                                            controller.enqueue(encoder.encode(content))
+                                        }
+                                    } catch {
+                                        // ignore parse errors
+                                    }
+                                }
+                            }
+                        }
+                        controller.close()
+                    } catch (error) {
+                        controller.error(error)
+                    }
+                },
+            })
         } else {
             const data = await response.json()
             return data.choices[0]?.message?.content || ""

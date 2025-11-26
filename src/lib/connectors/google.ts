@@ -111,7 +111,94 @@ export class GoogleConnector implements GenAIConnector {
             if (!response.body) {
                 throw new Error("No response body from Google")
             }
-            return response.body
+
+            const reader = response.body.getReader()
+            const decoder = new TextDecoder()
+            const encoder = new TextEncoder()
+
+            return new ReadableStream({
+                async start(controller) {
+                    try {
+                        let buffer = ""
+                        //console.log("Google stream started")
+                        while (true) {
+                            const { done, value } = await reader.read()
+                            if (done) {
+                                //console.log("Google stream done")
+                                break
+                            }
+
+                            const chunk = decoder.decode(value, { stream: true })
+                            //console.log("Google stream chunk received:", chunk)
+                            buffer += chunk
+
+                            // Clean up the buffer to make it easier to parse objects
+                            let cleanBuffer = buffer.trim()
+                            if (cleanBuffer.startsWith("[")) cleanBuffer = cleanBuffer.slice(1)
+                            if (cleanBuffer.endsWith("]")) cleanBuffer = cleanBuffer.slice(0, -1)
+
+                            // Let's try to parse the buffer as a series of JSON objects.
+                            // We can try to find the closing brace '}' of an object.
+
+                            let startIndex = 0
+                            let braceCount = 0
+                            let inString = false
+                            let escaped = false
+
+                            for (let i = 0; i < buffer.length; i++) {
+                                const char = buffer[i]
+
+                                if (escaped) {
+                                    escaped = false
+                                    continue
+                                }
+
+                                if (char === "\\") {
+                                    escaped = true
+                                    continue
+                                }
+
+                                if (char === '"') {
+                                    inString = !inString
+                                    continue
+                                }
+
+                                if (!inString) {
+                                    if (char === "{") {
+                                        if (braceCount === 0) startIndex = i
+                                        braceCount++
+                                    } else if (char === "}") {
+                                        braceCount--
+                                        if (braceCount === 0) {
+                                            // Found a complete object
+                                            const jsonStr = buffer.substring(startIndex, i + 1)
+                                            //console.log("Attempting to parse JSON object:", jsonStr)
+                                            try {
+                                                const data = JSON.parse(jsonStr)
+                                                const text = data.candidates?.[0]?.content?.parts?.[0]?.text
+                                                if (text) {
+                                                    //console.log("Extracted text:", text)
+                                                    controller.enqueue(encoder.encode(text))
+                                                }
+                                                // Advance buffer
+                                                buffer = buffer.substring(i + 1)
+                                                i = -1 // Reset loop to start of new buffer
+                                            } catch {
+                                                //console.error("Failed to parse JSON object:", e)
+                                                // Failed to parse, maybe incomplete or invalid
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        controller.close()
+                    } catch (error) {
+                        //console.error("Google stream error:", error)
+                        controller.error(error)
+                    }
+                },
+            })
         } else {
             const data = await response.json()
             return data.candidates?.[0]?.content?.parts?.[0]?.text || ""
