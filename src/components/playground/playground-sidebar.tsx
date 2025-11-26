@@ -22,27 +22,29 @@ import { Settings, AlertTriangle } from "lucide-react"
 type Mode = "complete" | "insert" | "edit"
 
 interface PlaygroundSidebarProps {
-  onModelChange?: (model: string) => void
-  onModeChange?: (mode: Mode) => void
-  onParametersChange?: (params: {
-    temperature: number
-    maxLength: number
-    topP: number
-  }) => void
+  selectedModel: string
+  onModelChange: (model: string) => void
+  temperature: number
+  onTemperatureChange: (value: number) => void
+  maxLength: number
+  onMaxLengthChange: (value: number) => void
+  topP: number
+  onTopPChange: (value: number) => void
   onOpenSettings?: () => void
 }
 
 export function PlaygroundSidebar({
+  selectedModel,
   onModelChange,
-  onModeChange,
-  onParametersChange,
+  temperature,
+  onTemperatureChange,
+  maxLength,
+  onMaxLengthChange,
+  topP,
+  onTopPChange,
   onOpenSettings,
 }: PlaygroundSidebarProps) {
   const [mode, setMode] = useState<Mode>("complete")
-  const [temperature, setTemperature] = useState([0.7])
-  const [maxLength, setMaxLength] = useState([256])
-  const [topP, setTopP] = useState([0.9])
-  const [selectedModel, setSelectedModel] = useState<string>("")
 
   const { getAvailableModels, config } = useAPIKeys()
 
@@ -68,39 +70,6 @@ export function PlaygroundSidebar({
 
   const handleModeChange = (newMode: Mode) => {
     setMode(newMode)
-    onModeChange?.(newMode)
-  }
-
-  const handleModelChange = (model: string) => {
-    setSelectedModel(model)
-    onModelChange?.(model)
-  }
-
-  const handleTemperatureChange = (value: number[]) => {
-    setTemperature(value)
-    onParametersChange?.({
-      temperature: value[0],
-      maxLength: maxLength[0],
-      topP: topP[0],
-    })
-  }
-
-  const handleMaxLengthChange = (value: number[]) => {
-    setMaxLength(value)
-    onParametersChange?.({
-      temperature: temperature[0],
-      maxLength: value[0],
-      topP: topP[0],
-    })
-  }
-
-  const handleTopPChange = (value: number[]) => {
-    setTopP(value)
-    onParametersChange?.({
-      temperature: temperature[0],
-      maxLength: maxLength[0],
-      topP: value[0],
-    })
   }
 
   return (
@@ -131,7 +100,7 @@ export function PlaygroundSidebar({
           ) : (
             <Select
               value={selectedModel}
-              onValueChange={handleModelChange}
+              onValueChange={onModelChange}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Select a model..." />
@@ -212,12 +181,12 @@ export function PlaygroundSidebar({
             <div className="flex items-center justify-between">
               <Label>Temperature</Label>
               <span className="text-sm text-muted-foreground">
-                {temperature[0].toFixed(2)}
+                {temperature.toFixed(2)}
               </span>
             </div>
             <Slider
-              value={temperature}
-              onValueChange={handleTemperatureChange}
+              value={[temperature]}
+              onValueChange={(val) => onTemperatureChange(val[0])}
               min={0}
               max={1}
               step={0.01}
@@ -229,12 +198,12 @@ export function PlaygroundSidebar({
             <div className="flex items-center justify-between">
               <Label>Maximum Length</Label>
               <span className="text-sm text-muted-foreground">
-                {maxLength[0]}
+                {maxLength}
               </span>
             </div>
             <Slider
-              value={maxLength}
-              onValueChange={handleMaxLengthChange}
+              value={[maxLength]}
+              onValueChange={(val) => onMaxLengthChange(val[0])}
               min={1}
               max={4096}
               step={1}
@@ -246,12 +215,12 @@ export function PlaygroundSidebar({
             <div className="flex items-center justify-between">
               <Label>Top P</Label>
               <span className="text-sm text-muted-foreground">
-                {topP[0].toFixed(2)}
+                {topP.toFixed(2)}
               </span>
             </div>
             <Slider
-              value={topP}
-              onValueChange={handleTopPChange}
+              value={[topP]}
+              onValueChange={(val) => onTopPChange(val[0])}
               min={0}
               max={1}
               step={0.01}

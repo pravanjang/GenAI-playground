@@ -51,6 +51,7 @@ export class OpenAIConnector implements GenAIConnector {
         apiKey: string,
         stream: boolean = true
     ): Promise<ReadableStream | string> {
+        console.log("OpenAI chat", messages, config)
         const response = await fetch("https://api.openai.com/v1/chat/completions", {
             method: "POST",
             headers: {
@@ -76,6 +77,8 @@ export class OpenAIConnector implements GenAIConnector {
             const error = await response.json()
             throw new Error(error.error?.message || "OpenAI API request failed")
         }
+
+        console.log("OpenAI response", response)
 
         if (stream) {
             if (!response.body) {
