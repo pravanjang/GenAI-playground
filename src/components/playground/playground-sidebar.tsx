@@ -16,7 +16,7 @@ import { Slider } from "@/components/ui/slider"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { useAPIKeys } from "@/lib/stores/api-key-store"
-import { PROVIDERS, ProviderID, MODELS } from "@/lib/types"
+import { PROVIDERS, ProviderID } from "@/lib/types"
 import { Settings, AlertTriangle } from "lucide-react"
 
 type Mode = "complete" | "insert" | "edit"
@@ -55,7 +55,7 @@ export function PlaygroundSidebar({
   const modelsByProvider = (Object.keys(PROVIDERS) as ProviderID[]).map(
     (providerId) => {
       const provider = config.providers.find((p) => p.id === providerId)
-      const providerModels = MODELS.filter((m) => m.provider === providerId)
+      const providerModels = availableModels.filter((m) => m.provider === providerId)
       const isConfigured = provider?.status === "valid"
 
       return {

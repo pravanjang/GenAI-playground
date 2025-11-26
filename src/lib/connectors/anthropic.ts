@@ -1,19 +1,27 @@
 import { GenAIConnector } from "./base"
-import { Message, ModelConfig, ModelInfo, MODELS } from "@/lib/types"
+import { Message, ModelConfig, ModelInfo, MAX_DYNAMIC_MODELS } from "@/lib/types"
+
+interface AnthropicModel {
+    id: string
+    display_name: string
+    created_at?: string
+}
+
+interface AnthropicListModelsResponse {
+    data: AnthropicModel[]
+}
 
 export class AnthropicConnector implements GenAIConnector {
     id = "anthropic" as const
 
     async validateKey(apiKey: string): Promise<boolean> {
         try {
-            // Anthropic doesn't have a simple "validate" endpoint that doesn't cost money or require a body
-            // But we can try to list models if they support it, or just assume valid if it matches regex
-            // Recent Anthropic API supports GET /v1/models
             const response = await fetch("https://api.anthropic.com/v1/models", {
                 headers: {
                     "x-api-key": apiKey,
                     "anthropic-version": "2023-06-01",
-                    "content-type": "application/json"
+                    "content-type": "application/json",
+                    "anthropic-dangerous-direct-browser-access": "true"
                 },
             })
             return response.ok
@@ -25,24 +33,40 @@ export class AnthropicConnector implements GenAIConnector {
 
     async getModels(apiKey: string): Promise<ModelInfo[]> {
         try {
-            // Note: Client-side calls to Anthropic might fail due to CORS if not proxied.
-            // We'll try the direct call.
             const response = await fetch("https://api.anthropic.com/v1/models", {
                 headers: {
                     "x-api-key": apiKey,
                     "anthropic-version": "2023-06-01",
-                    "content-type": "application/json"
+                    "content-type": "application/json",
+                    "anthropic-dangerous-direct-browser-access": "true"
                 },
             })
 
             if (!response.ok) return []
 
-            // If successful, we could parse the models. 
-            // For now, we'll return the static list filtered by what we know
-            return MODELS.filter(m => m.provider === "anthropic").map(model => ({
-                ...model,
-                available: true
-            }))
+            const data = (await response.json()) as AnthropicListModelsResponse
+            const apiModels = data.data || []
+
+            // Sort by created_at descending if available
+            apiModels.sort((a, b) => {
+                if (a.created_at && b.created_at) {
+                    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+                }
+                return 0
+            })
+
+            const recentModels = apiModels.slice(0, MAX_DYNAMIC_MODELS)
+
+            return recentModels.map((model) => {
+                return {
+                    id: model.id,
+                    name: model.display_name || model.id,
+                    provider: "anthropic",
+                    contextWindow: 200000, // Default for Anthropic
+                    description: "Dynamic model from Anthropic",
+                    available: true
+                }
+            })
         } catch (error) {
             console.error("Anthropic getModels error:", error)
             return []

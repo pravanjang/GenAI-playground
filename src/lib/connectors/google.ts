@@ -1,5 +1,17 @@
 import { GenAIConnector } from "./base"
-import { Message, ModelConfig, ModelInfo, MODELS } from "@/lib/types"
+import { Message, ModelConfig, ModelInfo, MAX_DYNAMIC_MODELS } from "@/lib/types"
+
+interface GoogleModel {
+    name: string
+    displayName: string
+    description: string
+    inputTokenLimit: number
+    supportedGenerationMethods: string[]
+}
+
+interface GoogleListModelsResponse {
+    models: GoogleModel[]
+}
 
 export class GoogleConnector implements GenAIConnector {
     id = "google" as const
@@ -25,14 +37,30 @@ export class GoogleConnector implements GenAIConnector {
 
             if (!response.ok) return []
 
-            await response.json()
-            // Google returns a list of models. We could map them.
-            // For now, we'll just validate our known models are available.
+            const data = (await response.json()) as GoogleListModelsResponse
+            const apiModels = data.models || []
 
-            return MODELS.filter(m => m.provider === "google").map(model => ({
-                ...model,
-                available: true
-            }))
+            // Google models don't have a clear creation date in the list response usually, 
+            // but we can filter for 'generateContent' support
+            const chatModels = apiModels.filter((m) =>
+                m.supportedGenerationMethods?.includes("generateContent")
+            )
+
+            const recentModels = chatModels.slice(0, MAX_DYNAMIC_MODELS)
+
+            return recentModels.map((model) => {
+                // model.name is like "models/gemini-pro"
+                const id = model.name.replace("models/", "")
+
+                return {
+                    id: id,
+                    name: model.displayName || id,
+                    provider: "google",
+                    contextWindow: model.inputTokenLimit || 32768,
+                    description: model.description || "Dynamic model from Google",
+                    available: true
+                }
+            })
         } catch (error) {
             console.error("Google getModels error:", error)
             return []
@@ -52,11 +80,8 @@ export class GoogleConnector implements GenAIConnector {
         }))
 
         // Remove system message if present and handle it separately if needed
-        // Gemini 1.5 Pro supports system instructions, but for simplicity we might prepend it or use the specific field if available in the endpoint version
-        // For now, let's just prepend system message to the first user message if it exists, or look for a system_instruction field
-
         const systemMessage = messages.find(m => m.role === "system")
-        const chatContents = contents.filter(c => c.role !== "system") // Filter out system role from contents as it might not be valid in 'contents' array directly depending on API version
+        const chatContents = contents.filter(c => c.role !== "system")
 
         const method = stream ? "streamGenerateContent" : "generateContent"
         const url = `https://generativelanguage.googleapis.com/v1beta/models/${config.model}:${method}?key=${apiKey}`

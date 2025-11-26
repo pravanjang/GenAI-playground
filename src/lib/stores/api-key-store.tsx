@@ -5,7 +5,6 @@ import {
   APIKeyConfig,
   APIProvider,
   DEFAULT_API_CONFIG,
-  MODELS,
   ModelInfo,
   ProviderID,
 } from "@/lib/types"
@@ -185,7 +184,6 @@ export function APIKeyProvider({ children }: { children: React.ReactNode }) {
 
       // Get available models for this provider
       const models = await connector.getModels(provider.apiKey)
-      const modelIds = models.map((m) => m.id)
 
       setConfig((prev) => ({
         ...prev,
@@ -194,7 +192,7 @@ export function APIKeyProvider({ children }: { children: React.ReactNode }) {
             ? {
               ...p,
               status: "valid",
-              availableModels: modelIds,
+              availableModels: models,
               lastTested: Date.now(),
               errorMessage: undefined,
             }
@@ -229,14 +227,9 @@ export function APIKeyProvider({ children }: { children: React.ReactNode }) {
   }, [config.providers, testConnection])
 
   const getAvailableModels = useCallback((): ModelInfo[] => {
-    const validProviders = config.providers
+    return config.providers
       .filter((p) => p.status === "valid")
-      .map((p) => p.id)
-
-    return MODELS.map((model) => ({
-      ...model,
-      available: validProviders.includes(model.provider),
-    }))
+      .flatMap((p) => p.availableModels)
   }, [config.providers])
 
   const getProviderStatus = useCallback((providerId: ProviderID) => {

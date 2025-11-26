@@ -6,7 +6,6 @@ import { PlaygroundSidebar } from "@/components/playground/playground-sidebar"
 import { PlaygroundTextarea } from "@/components/playground/playground-textarea"
 import { useAPIKeys } from "@/lib/stores/api-key-store"
 import { getConnector } from "@/lib/connectors"
-import { MODELS } from "@/lib/types"
 
 export default function Playground() {
   const [selectedModel, setSelectedModel] = useState<string>("")
@@ -15,7 +14,7 @@ export default function Playground() {
   const [topP, setTopP] = useState(0.9)
   const [response, setResponse] = useState<string | undefined>(undefined)
 
-  const { config } = useAPIKeys()
+  const { config, getAvailableModels } = useAPIKeys()
 
   const handleSubmit = async (text: string) => {
     setResponse("") // Clear previous response
@@ -25,7 +24,8 @@ export default function Playground() {
       return
     }
 
-    const modelInfo = MODELS.find(m => m.id === selectedModel)
+    const availableModels = getAvailableModels()
+    const modelInfo = availableModels.find(m => m.id === selectedModel)
     if (!modelInfo) {
       setResponse("Invalid model selected.")
       return
@@ -80,7 +80,7 @@ export default function Playground() {
                 const data = JSON.parse(line.slice(6))
                 const content = data.choices[0]?.delta?.content || ""
                 setResponse(prev => (prev || "") + content)
-              } catch (e) {
+              } catch {
                 // ignore parse errors for partial chunks
               }
             }

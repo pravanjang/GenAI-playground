@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useAPIKeys, maskAPIKey, validateKeyFormat } from "@/lib/stores/api-key-store"
-import { PROVIDERS, ProviderID, MODELS } from "@/lib/types"
+import { PROVIDERS, ProviderID } from "@/lib/types"
 import { Eye, EyeOff, Check, AlertTriangle, X, Loader2 } from "lucide-react"
 
 interface APIKeyInputProps {
@@ -20,7 +20,6 @@ export function APIKeyInput({ providerId }: APIKeyInputProps) {
 
   const provider = config.providers.find((p) => p.id === providerId)
   const providerInfo = PROVIDERS[providerId]
-  const modelCount = MODELS.filter((m) => m.provider === providerId).length
 
   if (!provider || !providerInfo) return null
 
@@ -91,7 +90,7 @@ export function APIKeyInput({ providerId }: APIKeyInputProps) {
           <span className="text-yellow-500">Not tested</span>
         ) : (
           <span className="text-muted-foreground">
-            Not configured • {modelCount} models available with valid key
+            Not configured
           </span>
         )
     }

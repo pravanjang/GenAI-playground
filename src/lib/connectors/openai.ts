@@ -1,5 +1,17 @@
 import { GenAIConnector } from "./base"
-import { Message, ModelConfig, ModelInfo, MODELS } from "@/lib/types"
+import { Message, ModelConfig, ModelInfo, MAX_DYNAMIC_MODELS } from "@/lib/types"
+
+interface OpenAIModel {
+    id: string
+    created: number
+    object: string
+    owned_by: string
+}
+
+interface OpenAIListModelsResponse {
+    object: string
+    data: OpenAIModel[]
+}
 
 export class OpenAIConnector implements GenAIConnector {
     id = "openai" as const
@@ -28,17 +40,25 @@ export class OpenAIConnector implements GenAIConnector {
 
             if (!response.ok) return []
 
-            const data = await response.json()
+            const data = (await response.json()) as OpenAIListModelsResponse
             const apiModels = data.data || []
 
-            // Filter and map to our ModelInfo format
-            // We'll prioritize our known models but mark them as available
-            // We could also dynamically add new models from the API if we wanted to be fancy
+            // Sort by created date descending
+            apiModels.sort((a, b) => b.created - a.created)
 
-            return MODELS.filter(m => m.provider === "openai").map(model => ({
-                ...model,
-                available: apiModels.some((am: { id: string }) => am.id === model.id)
-            }))
+            // Limit to MAX_DYNAMIC_MODELS
+            const recentModels = apiModels.slice(0, MAX_DYNAMIC_MODELS)
+
+            return recentModels.map((model) => {
+                return {
+                    id: model.id,
+                    name: model.id,
+                    provider: "openai",
+                    contextWindow: 128000, // Default assumption for modern models
+                    description: "Dynamic model from OpenAI",
+                    available: true
+                }
+            })
         } catch (error) {
             console.error("OpenAI getModels error:", error)
             return []
