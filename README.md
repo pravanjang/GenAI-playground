@@ -1,13 +1,18 @@
 # GenAI Playground
 
+> [!WARNING]
+> **Disclaimer**: 90% of the code is developed by AI agents (GitHub Copilot, Gemini 3 Pro). it shouldn't be used for production without proper review, testing and validation.
+
 An interactive AI playground application that allows users to select from multiple large language models and interact with them through a modern chat interface. Built with Next.js 16, TypeScript, and shadcn/ui components.
 
 ## Features
 
-- 🤖 **Multiple AI Models**: Support for GPT-4, GPT-3.5 Turbo, Claude 3 (Opus & Sonnet), and Gemini Pro
+- 🤖 **Multiple AI Models**: Support for OpenAI (GPT-4, GPT-3.5), Anthropic (Claude 3), and Google (Gemini Pro)
+- 🔌 **Unified Connectors**: Modular connector architecture for easy integration of new providers
+- 🌊 **Standardized Streaming**: Consistent streaming response handling across all AI providers
+- 🔄 **Dynamic Model Fetching**: Automatically fetches available models from supported providers
 - 🎨 **Modern UI**: Beautiful dark theme interface built with shadcn/ui
 - ⚙️ **Adjustable Parameters**: Fine-tune Temperature, Maximum Length, and Top P
-- 🔄 **Multiple Modes**: Complete, Insert, and Edit modes
 - 💾 **Preset Management**: Save and load conversation presets
 - 🐳 **Docker Support**: Easy deployment with Docker and docker-compose
 - 📱 **Responsive Design**: Works seamlessly on desktop and mobile devices
@@ -19,6 +24,7 @@ An interactive AI playground application that allows users to select from multip
 - **Styling**: Tailwind CSS
 - **UI Components**: shadcn/ui
 - **Icons**: Lucide React
+- **AI Integration**: Custom Connectors (OpenAI, Anthropic, Google)
 
 ## Prerequisites
 
@@ -100,27 +106,41 @@ The application will be available at [http://localhost:3000](http://localhost:30
 ## Project Structure
 
 ```
-/app
-  /layout.tsx              # Root layout with dark theme
-  /page.tsx                # Home page
-  /playground
-    /page.tsx              # Main playground page
-/components
-  /ui                      # shadcn/ui components
-    /button.tsx
-    /select.tsx
-    /slider.tsx
-    /textarea.tsx
-    /label.tsx
-    /separator.tsx
-  /playground              # Custom playground components
-    /playground-header.tsx
-    /playground-sidebar.tsx
-    /playground-textarea.tsx
-/lib
-  /utils.ts                # Utility functions
-/styles
-  /globals.css             # Global styles with dark theme
+/src
+  /app
+    /playground
+      /page.tsx              # Main playground page
+    /globals.css             # Global styles
+    /layout.tsx              # Root layout
+    /page.tsx                # Home page
+    /providers.tsx           # App providers
+  /components
+    /ui                      # shadcn/ui components
+      /button.tsx
+      /dialog.tsx
+      /input.tsx
+      /label.tsx
+      /select.tsx
+      /separator.tsx
+      /slider.tsx
+      /switch.tsx
+      /tabs.tsx
+      /textarea.tsx
+      /tooltip.tsx
+    /playground              # Custom playground components
+      /playground-header.tsx
+      /playground-sidebar.tsx
+      /playground-textarea.tsx
+      /settings              # Settings components
+  /lib
+    /connectors              # AI Provider connectors
+      /base.ts               # Base interface
+      /openai.ts             # OpenAI implementation
+      /anthropic.ts          # Anthropic implementation
+      /google.ts             # Google implementation
+    /stores                  # State management
+    /types                   # TypeScript definitions
+    /utils.ts                # Utility functions
 Dockerfile                 # Multi-stage Docker build
 .dockerignore              # Docker ignore file
 docker-compose.yml         # Docker Compose configuration
@@ -137,24 +157,16 @@ docker-compose.yml         # Docker Compose configuration
 ## Features in Detail
 
 ### Model Selection
-Choose from multiple AI models including:
-- GPT-4
-- GPT-3.5 Turbo
-- Claude 3 Opus
-- Claude 3 Sonnet
-- Gemini Pro
-- Gemini 1.5 Pro
+Choose from multiple AI models. The application dynamically fetches available models from:
+- OpenAI
+- Anthropic
+- Google
 
 ### Parameter Controls
 Fine-tune model behavior with adjustable parameters:
 - **Temperature** (0-1): Controls randomness in responses
 - **Maximum Length** (1-4096): Limits response length
 - **Top P** (0-1): Controls diversity via nucleus sampling
-
-### Modes
-- **Complete**: Generate text completions
-- **Insert**: Insert text at a specific position
-- **Edit**: Edit and refine existing text
 
 ### Preset Management
 - Save frequently used configurations
