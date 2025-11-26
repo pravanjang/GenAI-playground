@@ -8,9 +8,10 @@ import { Loader2 } from "lucide-react"
 interface PlaygroundTextareaProps {
   onSubmit?: (text: string) => Promise<void>
   response?: string
+  isError?: boolean
 }
 
-export function PlaygroundTextarea({ onSubmit, response }: PlaygroundTextareaProps) {
+export function PlaygroundTextarea({ onSubmit, response, isError }: PlaygroundTextareaProps) {
   const [input, setInput] = useState("")
   const [internalOutput, setInternalOutput] = useState("")
   const [isLoading, setIsLoading] = useState(false)
@@ -76,10 +77,13 @@ export function PlaygroundTextarea({ onSubmit, response }: PlaygroundTextareaPro
 
       {output && (
         <div className="space-y-2">
-          <div className="text-sm font-medium text-muted-foreground">
-            Response:
+          <div className={`text-sm font-medium ${isError ? "text-red-500" : "text-muted-foreground"}`}>
+            {isError ? "Error:" : "Response:"}
           </div>
-          <div className="rounded-lg border border-border bg-muted/50 p-4">
+          <div className={`rounded-lg border p-4 ${isError
+              ? "border-red-200 bg-red-50 text-red-900 dark:border-red-900/50 dark:bg-red-900/20 dark:text-red-200"
+              : "border-border bg-muted/50"
+            }`}>
             <pre className="whitespace-pre-wrap font-mono text-sm">
               {output}
             </pre>

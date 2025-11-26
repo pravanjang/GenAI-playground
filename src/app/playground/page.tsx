@@ -13,14 +13,17 @@ export default function Playground() {
   const [maxLength, setMaxLength] = useState(256)
   const [topP, setTopP] = useState(0.9)
   const [response, setResponse] = useState<string | undefined>(undefined)
+  const [isError, setIsError] = useState(false)
 
   const { config, getAvailableModels } = useAPIKeys()
 
   const handleSubmit = async (text: string) => {
     setResponse("") // Clear previous response
+    setIsError(false)
 
     if (!selectedModel) {
       setResponse("Please select a model first.")
+      setIsError(true)
       return
     }
 
@@ -28,6 +31,7 @@ export default function Playground() {
     const modelInfo = availableModels.find(m => m.id === selectedModel)
     if (!modelInfo) {
       setResponse("Invalid model selected.")
+      setIsError(true)
       return
     }
 
@@ -37,6 +41,7 @@ export default function Playground() {
 
       if (!providerConfig || !providerConfig.apiKey) {
         setResponse(`Please configure API key for ${modelInfo.provider}.`)
+        setIsError(true)
         return
       }
 
@@ -89,6 +94,7 @@ export default function Playground() {
       }
     } catch (error) {
       setResponse(`Error: ${error instanceof Error ? error.message : "Unknown error"}`)
+      setIsError(true)
     }
   }
 
@@ -99,6 +105,7 @@ export default function Playground() {
         <PlaygroundTextarea
           onSubmit={handleSubmit}
           response={response}
+          isError={isError}
         />
         <PlaygroundSidebar
           selectedModel={selectedModel}
