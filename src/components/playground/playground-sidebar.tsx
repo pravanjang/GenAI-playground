@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Label } from "@/components/ui/label"
 import {
   Select,
@@ -46,7 +46,12 @@ export function PlaygroundSidebar({
 }: PlaygroundSidebarProps) {
   const [mode, setMode] = useState<Mode>("complete")
 
-  const { getAvailableModels, config } = useAPIKeys()
+  const { getAvailableModels, config, initializeKeylessProviders } = useAPIKeys()
+
+  // Initialize keyless providers (like Ollama) on mount
+  useEffect(() => {
+    initializeKeylessProviders()
+  }, [initializeKeylessProviders])
 
   const availableModels = getAvailableModels()
   const hasValidKey = availableModels.some((m) => m.available)
@@ -57,12 +62,14 @@ export function PlaygroundSidebar({
       const provider = config.providers.find((p) => p.id === providerId)
       const providerModels = availableModels.filter((m) => m.provider === providerId)
       const isConfigured = provider?.status === "valid"
+      const requiresKey = PROVIDERS[providerId].requiresKey
 
       return {
         providerId,
         providerName: PROVIDERS[providerId].name,
         models: providerModels,
         isConfigured,
+        requiresKey,
         status: provider?.status,
       }
     }
@@ -115,9 +122,13 @@ export function PlaygroundSidebar({
                         <span className="text-xs text-green-500">
                           ({group.models.length} models)
                         </span>
-                      ) : (
+                      ) : group.requiresKey ? (
                         <span className="text-xs text-muted-foreground">
                           (not configured)
+                        </span>
+                      ) : (
+                        <span className="text-xs text-yellow-500">
+                          (not available)
                         </span>
                       )}
                     </SelectLabel>

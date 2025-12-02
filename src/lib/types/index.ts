@@ -1,4 +1,4 @@
-export type ProviderID = "openai" | "anthropic" | "google"
+export type ProviderID = "openai" | "anthropic" | "google" | "ollama";
 
 export type APIKeyStatus = "valid" | "invalid" | "untested" | "error"
 
@@ -71,22 +71,31 @@ export interface Conversation {
 // Provider info
 export const PROVIDERS: Record<
   ProviderID,
-  { name: string; keyPrefix: string; keyPlaceholder: string }
+  { name: string; keyPrefix: string; keyPlaceholder: string; requiresKey: boolean }
 > = {
   openai: {
     name: "OpenAI",
     keyPrefix: "sk-",
     keyPlaceholder: "sk-proj-...",
+    requiresKey: true,
   },
   anthropic: {
     name: "Anthropic",
     keyPrefix: "sk-ant-",
     keyPlaceholder: "sk-ant-...",
+    requiresKey: true,
   },
   google: {
     name: "Google AI",
     keyPrefix: "AIza",
     keyPlaceholder: "AIza...",
+    requiresKey: true,
+  },
+  ollama: {
+    name: "Ollama",
+    keyPrefix: "",
+    keyPlaceholder: "(no API key required)",
+    requiresKey: false,
   },
 }
 
@@ -110,6 +119,13 @@ export const DEFAULT_API_CONFIG: APIKeyConfig = {
       id: "google",
       name: "Google AI",
       configured: false,
+      status: "untested",
+      availableModels: [],
+    },
+    {
+      id: "ollama",
+      name: "Ollama",
+      configured: true, // Ollama doesn't require API key
       status: "untested",
       availableModels: [],
     },

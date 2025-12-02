@@ -7,6 +7,7 @@ import {
   DEFAULT_API_CONFIG,
   ModelInfo,
   ProviderID,
+  PROVIDERS,
 } from "@/lib/types"
 import { getConnector } from "@/lib/connectors"
 
@@ -22,6 +23,7 @@ interface APIKeyContextType {
   getProviderStatus: (providerId: ProviderID) => APIProvider | undefined
   isAnyKeyConfigured: () => boolean
   clearAllKeys: () => void
+  initializeKeylessProviders: () => Promise<void>
 }
 
 const APIKeyContext = createContext<APIKeyContextType | undefined>(undefined)
@@ -38,6 +40,12 @@ export function validateKeyFormat(
   key: string
 ): boolean {
   const trimmedKey = key.trim()
+  
+  // Ollama doesn't require an API key
+  if (!PROVIDERS[providerId].requiresKey) {
+    return true
+  }
+  
   if (!trimmedKey) return false
 
   switch (providerId) {
@@ -162,7 +170,10 @@ export function APIKeyProvider({ children }: { children: React.ReactNode }) {
 
   const testConnection = useCallback(async (providerId: ProviderID): Promise<boolean> => {
     const provider = config.providers.find((p) => p.id === providerId)
-    if (!provider?.apiKey) return false
+    const providerInfo = PROVIDERS[providerId]
+    
+    // For providers that require API keys, check if we have one
+    if (providerInfo.requiresKey && !provider?.apiKey) return false
 
     // Set testing status
     setConfig((prev) => ({
@@ -176,14 +187,14 @@ export function APIKeyProvider({ children }: { children: React.ReactNode }) {
 
     try {
       const connector = getConnector(providerId)
-      const isValid = await connector.validateKey(provider.apiKey)
+      const isValid = await connector.validateKey(provider?.apiKey ?? "")
 
       if (!isValid) {
-        throw new Error("Invalid API key")
+        throw new Error(providerInfo.requiresKey ? "Invalid API key" : "Service not available")
       }
 
       // Get available models for this provider
-      const models = await connector.getModels(provider.apiKey)
+      const models = await connector.getModels(provider?.apiKey ?? "")
 
       setConfig((prev) => ({
         ...prev,
@@ -192,6 +203,7 @@ export function APIKeyProvider({ children }: { children: React.ReactNode }) {
             ? {
               ...p,
               status: "valid",
+              configured: true,
               availableModels: models,
               lastTested: Date.now(),
               errorMessage: undefined,
@@ -226,6 +238,14 @@ export function APIKeyProvider({ children }: { children: React.ReactNode }) {
     await Promise.all(configuredProviders.map((p) => testConnection(p.id)))
   }, [config.providers, testConnection])
 
+  // Initialize providers that don't require API keys (like Ollama)
+  const initializeKeylessProviders = useCallback(async () => {
+    const keylessProviders = (Object.keys(PROVIDERS) as ProviderID[])
+      .filter((id) => !PROVIDERS[id].requiresKey)
+    
+    await Promise.all(keylessProviders.map((id) => testConnection(id)))
+  }, [testConnection])
+
   const getAvailableModels = useCallback((): ModelInfo[] => {
     return config.providers
       .filter((p) => p.status === "valid")
@@ -256,6 +276,7 @@ export function APIKeyProvider({ children }: { children: React.ReactNode }) {
         getProviderStatus,
         isAnyKeyConfigured,
         clearAllKeys,
+        initializeKeylessProviders,
       }}
     >
       {children}
