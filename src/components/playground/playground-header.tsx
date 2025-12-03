@@ -20,7 +20,11 @@ import {
 
 export function PlaygroundHeader() {
   const { theme, toggleTheme } = useTheme()
-
+  // Print debug information in development mode about Select type
+  if (typeof window !== "undefined" && process.env.NODE_ENV === "development") {
+    // eslint-disable-next-line no-console
+    console.log("PlaygroundHeader: Select type ->", typeof Select)
+  }
   return (
     <header className="border-b border-border bg-background px-6 py-3">
       <div className="flex items-center justify-between">
@@ -28,7 +32,8 @@ export function PlaygroundHeader() {
           <h1 className="text-xl font-semibold">Playground</h1>
         </div>
         <div className="flex items-center gap-2">
-          <Select defaultValue="none">
+          {Select && typeof Select === "function" ? (
+            <Select defaultValue="none">
             <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="Load preset..." />
             </SelectTrigger>
@@ -38,7 +43,11 @@ export function PlaygroundHeader() {
               <SelectItem value="qa">Q&amp;A</SelectItem>
               <SelectItem value="summarize">Summarize</SelectItem>
             </SelectContent>
-          </Select>
+            </Select>
+          ) : (
+            <div className="text-red-500 text-sm">Select component failed to load. Falling back to native select.</div>
+          )}
+          
           <Button variant="outline" size="sm">
             <Download className="h-4 w-4" />
             Save

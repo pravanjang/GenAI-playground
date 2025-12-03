@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Label } from "@/components/ui/label"
 import {
   Select,
@@ -48,9 +48,15 @@ export function PlaygroundSidebar({
 
   const { getAvailableModels, config, initializeKeylessProviders } = useAPIKeys()
 
-  // Initialize keyless providers (like Ollama) on mount
+  // Track if we've already initialized keyless providers to prevent infinite loops
+  const hasInitializedRef = useRef(false)
+
+  // Initialize keyless providers (like Ollama) on mount - run only once
   useEffect(() => {
-    initializeKeylessProviders()
+    if (!hasInitializedRef.current) {
+      hasInitializedRef.current = true
+      initializeKeylessProviders()
+    }
   }, [initializeKeylessProviders])
 
   const availableModels = getAvailableModels()
@@ -77,6 +83,65 @@ export function PlaygroundSidebar({
 
   const handleModeChange = (newMode: Mode) => {
     setMode(newMode)
+  }
+
+  // Fallback native select to keep the UI functional in case Radix Select fails
+  function NativeSelect() {
+    return (
+      <div>
+        <select
+          value={selectedModel}
+          onChange={(e) => onModelChange(e.target.value)}
+          className="w-full rounded-md border border-input px-3 py-2 text-sm"
+        >
+          <option value="">Select a model...</option>
+          {availableModels.map((m) => (
+            <option key={m.id} value={m.id} disabled={!m.available}>
+              {m.name}
+            </option>
+          ))}
+        </select>
+      </div>
+    )
+  }
+
+  // Defensive check: if the Select primitives are missing due to a module/import issue,
+  // render a friendly error message instead of letting React throw a minified error.
+  const isPrimitive = (p: unknown) => typeof p === "function" || (typeof p === "object" && p !== null)
+
+  if (
+    !isPrimitive(Select) ||
+    !isPrimitive(SelectGroup) ||
+    !isPrimitive(SelectItem) ||
+    !isPrimitive(SelectTrigger) ||
+    !isPrimitive(SelectValue)
+  ) {
+    console.error("Missing Select primitives:", { Select, SelectGroup, SelectItem, SelectTrigger, SelectValue })
+    return (
+      <div className="w-80 border-l border-border bg-background p-6 overflow-y-auto">
+        <div className="space-y-6">
+          <div className="rounded-lg border border-yellow-500/20 bg-yellow-500/10 p-3">
+            <div className="text-yellow-500 text-sm">Radix Select is unavailable; falling back to a native select for model selection.</div>
+          </div>
+          <div>
+            <Label>Model</Label>
+            <NativeSelect />
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // For diagnostics: print runtime typeof each primitive to help debug invalid element types
+  if (typeof window !== "undefined" && process.env.NODE_ENV === "development") {
+    // eslint-disable-next-line no-console
+    console.log("Select primitives types:", {
+      SelectType: typeof Select,
+      SelectGroupType: typeof SelectGroup,
+      SelectItemType: typeof SelectItem,
+      SelectTriggerType: typeof SelectTrigger,
+      SelectValueType: typeof SelectValue,
+    })
   }
 
   return (
@@ -243,3 +308,4 @@ export function PlaygroundSidebar({
     </div>
   )
 }
+  

@@ -169,11 +169,18 @@ export function APIKeyProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const testConnection = useCallback(async (providerId: ProviderID): Promise<boolean> => {
-    const provider = config.providers.find((p) => p.id === providerId)
     const providerInfo = PROVIDERS[providerId]
     
+    // Get the current provider from the latest config state
+    let currentApiKey: string | undefined
+    setConfig((prev) => {
+      const provider = prev.providers.find((p) => p.id === providerId)
+      currentApiKey = provider?.apiKey
+      return prev // No state change, just reading
+    })
+    
     // For providers that require API keys, check if we have one
-    if (providerInfo.requiresKey && !provider?.apiKey) return false
+    if (providerInfo.requiresKey && !currentApiKey) return false
 
     // Set testing status
     setConfig((prev) => ({
@@ -187,14 +194,14 @@ export function APIKeyProvider({ children }: { children: React.ReactNode }) {
 
     try {
       const connector = getConnector(providerId)
-      const isValid = await connector.validateKey(provider?.apiKey ?? "")
+      const isValid = await connector.validateKey(currentApiKey ?? "")
 
       if (!isValid) {
         throw new Error(providerInfo.requiresKey ? "Invalid API key" : "Service not available")
       }
 
       // Get available models for this provider
-      const models = await connector.getModels(provider?.apiKey ?? "")
+      const models = await connector.getModels(currentApiKey ?? "")
 
       setConfig((prev) => ({
         ...prev,
@@ -231,12 +238,16 @@ export function APIKeyProvider({ children }: { children: React.ReactNode }) {
       }))
       return false
     }
-  }, [config.providers])
+  }, [])
 
   const testAllConnections = useCallback(async () => {
-    const configuredProviders = config.providers.filter((p) => p.configured)
-    await Promise.all(configuredProviders.map((p) => testConnection(p.id)))
-  }, [config.providers, testConnection])
+    let configuredProviderIds: ProviderID[] = []
+    setConfig((prev) => {
+      configuredProviderIds = prev.providers.filter((p) => p.configured).map((p) => p.id)
+      return prev // No state change, just reading
+    })
+    await Promise.all(configuredProviderIds.map((id) => testConnection(id)))
+  }, [testConnection])
 
   // Initialize providers that don't require API keys (like Ollama)
   const initializeKeylessProviders = useCallback(async () => {
