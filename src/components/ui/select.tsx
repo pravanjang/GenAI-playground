@@ -145,18 +145,6 @@ const SelectSeparator = React.forwardRef<
 ))
 SelectSeparator.displayName = SelectPrimitive.Separator.displayName
 
-// Debug: print exported primitives types in development to help track invalid element type issues
-if (typeof window !== "undefined" && process.env.NODE_ENV === "development") {
-  // eslint-disable-next-line no-console
-  console.debug("ui/select: export types ->", {
-    Select: typeof Select,
-    SelectGroup: typeof SelectGroup,
-    SelectValue: typeof SelectValue,
-    SelectTrigger: typeof SelectTrigger,
-    SelectContent: typeof SelectContent,
-  })
-}
-
 export {
   Select,
   SelectGroup,

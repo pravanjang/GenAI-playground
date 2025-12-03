@@ -20,11 +20,7 @@ import {
 
 export function PlaygroundHeader() {
   const { theme, toggleTheme } = useTheme()
-  // Print debug information in development mode about Select type
-  if (typeof window !== "undefined" && process.env.NODE_ENV === "development") {
-    // eslint-disable-next-line no-console
-    console.log("PlaygroundHeader: Select type ->", typeof Select)
-  }
+
   return (
     <header className="border-b border-border bg-background px-6 py-3">
       <div className="flex items-center justify-between">

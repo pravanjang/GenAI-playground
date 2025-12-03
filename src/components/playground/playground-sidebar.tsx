@@ -18,8 +18,37 @@ import { Separator } from "@/components/ui/separator"
 import { useAPIKeys } from "@/lib/stores/api-key-store"
 import { PROVIDERS, ProviderID } from "@/lib/types"
 import { Settings, AlertTriangle } from "lucide-react"
+import { ModelInfo } from "@/lib/types"
 
 type Mode = "complete" | "insert" | "edit"
+
+// Fallback native select to keep the UI functional in case Radix Select fails
+function NativeSelect({
+  selectedModel,
+  onModelChange,
+  availableModels,
+}: {
+  selectedModel: string
+  onModelChange: (model: string) => void
+  availableModels: ModelInfo[]
+}) {
+  return (
+    <div>
+      <select
+        value={selectedModel}
+        onChange={(e) => onModelChange(e.target.value)}
+        className="w-full rounded-md border border-input px-3 py-2 text-sm"
+      >
+        <option value="">Select a model...</option>
+        {availableModels.map((m) => (
+          <option key={m.id} value={m.id} disabled={!m.available}>
+            {m.name}
+          </option>
+        ))}
+      </select>
+    </div>
+  )
+}
 
 interface PlaygroundSidebarProps {
   selectedModel: string
@@ -85,26 +114,6 @@ export function PlaygroundSidebar({
     setMode(newMode)
   }
 
-  // Fallback native select to keep the UI functional in case Radix Select fails
-  function NativeSelect() {
-    return (
-      <div>
-        <select
-          value={selectedModel}
-          onChange={(e) => onModelChange(e.target.value)}
-          className="w-full rounded-md border border-input px-3 py-2 text-sm"
-        >
-          <option value="">Select a model...</option>
-          {availableModels.map((m) => (
-            <option key={m.id} value={m.id} disabled={!m.available}>
-              {m.name}
-            </option>
-          ))}
-        </select>
-      </div>
-    )
-  }
-
   // Defensive check: if the Select primitives are missing due to a module/import issue,
   // render a friendly error message instead of letting React throw a minified error.
   const isPrimitive = (p: unknown) => typeof p === "function" || (typeof p === "object" && p !== null)
@@ -125,23 +134,15 @@ export function PlaygroundSidebar({
           </div>
           <div>
             <Label>Model</Label>
-            <NativeSelect />
+            <NativeSelect
+              selectedModel={selectedModel}
+              onModelChange={onModelChange}
+              availableModels={availableModels}
+            />
           </div>
         </div>
       </div>
     )
-  }
-
-  // For diagnostics: print runtime typeof each primitive to help debug invalid element types
-  if (typeof window !== "undefined" && process.env.NODE_ENV === "development") {
-    // eslint-disable-next-line no-console
-    console.log("Select primitives types:", {
-      SelectType: typeof Select,
-      SelectGroupType: typeof SelectGroup,
-      SelectItemType: typeof SelectItem,
-      SelectTriggerType: typeof SelectTrigger,
-      SelectValueType: typeof SelectValue,
-    })
   }
 
   return (

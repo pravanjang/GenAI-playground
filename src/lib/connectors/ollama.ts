@@ -62,7 +62,7 @@ function getBaseUrl(): string {
 export class OllamaConnector implements GenAIConnector {
   id = "ollama" as const
 
-  async validateKey(_apiKey?: string): Promise<boolean> {
+  async validateKey(): Promise<boolean> {
     // Ollama doesn't require an API key
     // Just check if the service is reachable
     try {
@@ -73,7 +73,7 @@ export class OllamaConnector implements GenAIConnector {
     }
   }
 
-  async getModels(_apiKey?: string): Promise<ModelInfo[]> {
+  async getModels(): Promise<ModelInfo[]> {
     try {
       const response = await fetch(`${getBaseUrl()}/api/tags`)
       
