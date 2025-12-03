@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   genai-playground:
     build:
@@ -15,8 +13,7 @@ services:
       - .env
     restart: unless-stopped
     depends_on:
-      ollama:
-        condition: service_healthy
+      - ollama
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000"]
       interval: 30s
@@ -27,7 +24,10 @@ services:
   # Ollama service - Local LLM inference
   # For GPU support, use the ollama-gpu profile: docker compose --profile gpu up
   ollama:
-    image: ollama/ollama:latest
+    build:
+      context: .
+      dockerfile: docker/ollama/Dockerfile
+    image: local/ollama:curl
     container_name: ollama
     ports:
       - "11434:11434"
@@ -37,20 +37,22 @@ services:
       - OLLAMA_HOST=0.0.0.0
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      # Try curl or wget; if either exists, run a simple HTTP check on /api/tags
+      test: ["CMD-SHELL", "curl -f http://localhost:11434/api/tags || wget -qO- http://localhost:11434/api/tags || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 5
       start_period: 60s
-    profiles:
-      - cpu
-      - default
+    # Ollama (CPU) runs by default unless --profile gpu is specified
 
   # Ollama with GPU support (NVIDIA)
   # Use: docker compose --profile gpu up
   ollama-gpu:
-    image: ollama/ollama:latest
-    container_name: ollama
+    build:
+      context: .
+      dockerfile: docker/ollama/Dockerfile
+    image: local/ollama:curl
+    container_name: ollama-gpu
     ports:
       - "11434:11434"
     volumes:
@@ -66,7 +68,7 @@ services:
               count: all
               capabilities: [gpu]
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      test: ["CMD-SHELL", "curl -f http://localhost:11434/api/tags || wget -qO- http://localhost:11434/api/tags || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 5
