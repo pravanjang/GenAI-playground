@@ -91,9 +91,9 @@ npm start
 
 ### Using Docker Compose
 
-1. **Start the application**
+1. **Start the application (CPU)**
    ```bash
-   docker-compose up -d
+   docker compose --profile cpu up -d
    ```
 
 2. **Stop the application**
@@ -102,6 +102,48 @@ npm start
    ```
 
 The application will be available at [http://localhost:3000](http://localhost:3000)
+
+### Using GPU
+
+To use the GPU-enabled Ollama service instead of the CPU variant, start the `gpu` profile:
+
+```bash
+docker compose --profile gpu up -d
+```
+
+Notes:
+- The `gpu` profile uses the same internal port (11434) and maps it to the host for GPU usage.
+- If you want to explicitly map the GPU container to a different host port to avoid conflicts, update `docker-compose.yml`.
+
+### Bootstrapping Models (Optional)
+
+If you want to ensure Ollama models are downloaded into the shared named Docker volume before starting the stack, use the `ollama-bootstrap` service:
+
+CPU:
+```powershell
+docker compose --profile cpu run --rm ollama-bootstrap
+docker compose --profile cpu up -d
+```
+
+GPU:
+```powershell
+docker compose --profile gpu run --rm ollama-bootstrap
+docker compose --profile gpu up -d
+```
+
+Notes:
+- The bootstrap service uses `OLLAMA_PRELOAD_MODELS` to determine which models to pull into the volume.
+- You only need to run this once (or if you clear the `ollama_data` volume) to populate the model files.
+
+Note about volumes and image preloads:
+- If you rely on image-time preloading (models baked into the image), an existing named volume may hide image contents at runtime. If so, you can remove the volume to get the image contents copied into a fresh volume:
+
+```powershell
+docker compose down -v
+docker compose --profile cpu up -d
+```
+
+Or explicitly bootstrap the models again with `ollama-bootstrap` as shown above.
 
 ## Project Structure
 
