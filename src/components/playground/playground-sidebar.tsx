@@ -17,7 +17,7 @@ import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { useAPIKeys } from "@/lib/stores/api-key-store"
 import { PROVIDERS, ProviderID } from "@/lib/types"
-import { Settings, AlertTriangle } from "lucide-react"
+import { Settings, AlertTriangle, SquareChartGantt, Columns2, PanelsRightBottom } from "lucide-react"
 import { ModelInfo } from "@/lib/types"
 
 type Mode = "complete" | "insert" | "edit"
@@ -230,7 +230,7 @@ export function PlaygroundSidebar({
               onClick={() => handleModeChange("complete")}
               className="text-xs"
             >
-              Complete
+              <SquareChartGantt />
             </Button>
             <Button
               variant={mode === "insert" ? "default" : "outline"}
@@ -238,7 +238,7 @@ export function PlaygroundSidebar({
               onClick={() => handleModeChange("insert")}
               className="text-xs"
             >
-              Insert
+              <Columns2 />
             </Button>
             <Button
               variant={mode === "edit" ? "default" : "outline"}
@@ -246,7 +246,7 @@ export function PlaygroundSidebar({
               onClick={() => handleModeChange("edit")}
               className="text-xs"
             >
-              Edit
+              <PanelsRightBottom />
             </Button>
           </div>
         </div>
