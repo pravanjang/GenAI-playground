@@ -21,7 +21,7 @@ export function APIKeyInput({ providerId }: APIKeyInputProps) {
   const provider = config.providers.find((p) => p.id === providerId)
   const providerInfo = PROVIDERS[providerId]
 
-  if (!provider || !providerInfo) return null
+  if (!provider || !providerInfo || !providerInfo.requiresKey) return null
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value

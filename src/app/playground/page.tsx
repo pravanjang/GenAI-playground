@@ -6,6 +6,7 @@ import { PlaygroundSidebar } from "@/components/playground/playground-sidebar"
 import { PlaygroundTextarea } from "@/components/playground/playground-textarea"
 import { useAPIKeys } from "@/lib/stores/api-key-store"
 import { getConnector } from "@/lib/connectors"
+import { PROVIDERS } from "@/lib/types"
 
 export default function Playground() {
   const [selectedModel, setSelectedModel] = useState<string>("")
@@ -39,8 +40,16 @@ export default function Playground() {
       const connector = getConnector(modelInfo.provider)
       const providerConfig = config.providers.find(p => p.id === modelInfo.provider)
 
-      if (!providerConfig || !providerConfig.apiKey) {
-        setResponse(`Please configure API key for ${modelInfo.provider}.`)
+      if (!providerConfig) {
+        setResponse(`Provider ${modelInfo.provider} not found.`)
+        setIsError(true)
+        return
+      }
+
+      // Check API key only for providers that require it
+      const providerInfo = PROVIDERS[modelInfo.provider]
+      if (providerInfo.requiresKey && !providerConfig.apiKey) {
+        setResponse(`Please configure API key for ${providerConfig.name}.`)
         setIsError(true)
         return
       }
@@ -61,7 +70,7 @@ export default function Playground() {
           frequencyPenalty: 0,
           presencePenalty: 0
         },
-        providerConfig.apiKey,
+        providerConfig.apiKey || "", // Empty string for providers that don't need keys
         true // Always stream for now
       )
 

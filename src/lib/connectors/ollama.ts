@@ -51,6 +51,11 @@ interface OllamaChatResponse {
   eval_duration?: number
 }
 
+interface OllamaPullRequest {
+  name: string
+  stream?: boolean
+}
+
 // Get base URL - use API route in browser, direct URL on server
 function getBaseUrl(): string {
   if (typeof window !== "undefined") {
@@ -253,5 +258,28 @@ export class OllamaConnector implements GenAIConnector {
     return parts.length > 0 
       ? `${parts.join(" • ")}` 
       : `Local model: ${model.name}`
+  }
+
+  async pullModel(modelName: string): Promise<ReadableStream<Uint8Array>> {
+    const response = await fetch(`${getBaseUrl()}/api/pull`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        name: modelName,
+        stream: true,
+      } as OllamaPullRequest),
+    })
+
+    if (!response.ok) {
+      throw new Error(`Failed to pull model: ${response.statusText}`)
+    }
+
+    if (!response.body) {
+      throw new Error("No response body from Ollama")
+    }
+
+    return response.body
   }
 }

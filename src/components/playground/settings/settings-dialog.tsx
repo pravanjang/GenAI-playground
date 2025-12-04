@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Settings } from "lucide-react"
 import { APIKeyInput } from "./api-key-input"
+import { OllamaModelInput } from "./ollama-model-input"
 import { useAPIKeys } from "@/lib/stores/api-key-store"
 import { PROVIDERS, ProviderID } from "@/lib/types"
 import { Separator } from "@/components/ui/separator"
@@ -68,9 +69,12 @@ export function SettingsDialog() {
             </div>
 
             <div className="space-y-4">
-              {(Object.keys(PROVIDERS) as ProviderID[]).map((providerId) => (
-                <APIKeyInput key={providerId} providerId={providerId} />
-              ))}
+              {(Object.keys(PROVIDERS) as ProviderID[]).map((providerId) => {
+                if (providerId === "ollama") {
+                  return <OllamaModelInput key={providerId} />
+                }
+                return <APIKeyInput key={providerId} providerId={providerId} />
+              })}
             </div>
 
             <Separator />
